@@ -1,0 +1,15 @@
+body {
+  box-sizing: border-box;
+  width: 280px;
+  margin: 0;
+  color: #17251b;
+  font: 14px/1.5 system-ui, sans-serif;
+}
+
+main { padding: 16px; }
+h1 { margin: 0 0 12px; font-size: 17px; }
+dl { display: grid; grid-template-columns: 76px 1fr; gap: 6px 10px; margin: 12px 0; }
+dt { color: #526158; }
+dd { margin: 0; overflow-wrap: anywhere; }
+.error { color: #a12a2a; }
+button { width: 100%; padding: 7px 10px; }

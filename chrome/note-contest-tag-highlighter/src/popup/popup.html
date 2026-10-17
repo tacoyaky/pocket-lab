@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>note Contest Tag Highlighter</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <h1>note お題タグハイライト</h1>
+      <p id="availability" role="status">状態を確認しています…</p>
+      <dl>
+        <dt>最終更新</dt>
+        <dd id="updated-at">—</dd>
+        <dt>対象タグ</dt>
+        <dd id="tag-count">—</dd>
+      </dl>
+      <p id="error" class="error" hidden></p>
+      <button id="retry" type="button">今すぐ再取得</button>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
