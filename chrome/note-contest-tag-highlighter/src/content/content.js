@@ -1,27 +1,48 @@
 (() => {
   const PUBLISH_PATH = /^\/notes\/[^/]+\/publish\/$/;
-  if (location.protocol !== "https:" || location.hostname !== "editor.note.com" || !PUBLISH_PATH.test(location.pathname)) return;
+  if (location.protocol !== "https:" || location.hostname !== "editor.note.com" || !location.pathname.startsWith("/notes/")) return;
 
   let targetTags = new Set();
   let scheduled = false;
+  let active = false;
 
-  chrome.runtime.sendMessage({ type: "GET_TAG_DATA" }, (response) => {
-    if (chrome.runtime.lastError) return;
-    setTagData(response?.tagData);
+  const observer = new MutationObserver(() => {
+    syncRoute();
+    if (active) scheduleApply();
   });
-  chrome.runtime.sendMessage({ type: "PAGE_READY" });
+  observer.observe(document.documentElement, { childList: true, characterData: true, subtree: true });
+
+  window.addEventListener("popstate", syncRoute);
+  window.addEventListener("hashchange", syncRoute);
+  syncRoute();
 
   chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === "TAG_DATA_UPDATED") {
-      chrome.runtime.sendMessage({ type: "GET_TAG_DATA" }, (response) => {
-        if (chrome.runtime.lastError) return;
-        setTagData(response?.tagData);
-      });
-    }
+    if (message?.type === "TAG_DATA_UPDATED" && active) loadTagData();
   });
 
-  const observer = new MutationObserver(scheduleApply);
-  observer.observe(document.documentElement, { childList: true, characterData: true, subtree: true });
+  function syncRoute() {
+    const shouldBeActive = PUBLISH_PATH.test(location.pathname);
+    if (shouldBeActive === active) return;
+
+    active = shouldBeActive;
+    if (active) {
+      loadTagData();
+      chrome.runtime.sendMessage({ type: "PAGE_READY" });
+      scheduleApply();
+    } else {
+      targetTags = new Set();
+      for (const element of document.querySelectorAll(".note-contest-tag-highlighter-match")) {
+        element.classList.remove("note-contest-tag-highlighter-match");
+      }
+    }
+  }
+
+  function loadTagData() {
+    chrome.runtime.sendMessage({ type: "GET_TAG_DATA" }, (response) => {
+      if (chrome.runtime.lastError || !active) return;
+      setTagData(response?.tagData);
+    });
+  }
 
   function setTagData(data) {
     targetTags = new Set(Array.isArray(data?.tags) ? data.tags.map(normalizeTag).filter(Boolean) : []);
@@ -29,7 +50,7 @@
   }
 
   function scheduleApply() {
-    if (scheduled) return;
+    if (!active || scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
@@ -38,6 +59,7 @@
   }
 
   function applyHighlighting() {
+    if (!active) return;
     const buttons = [...document.querySelectorAll("button"), ...document.querySelectorAll(".note-contest-tag-highlighter-match")];
     const hashtagButtons = [...new Set(buttons)].filter((button) => getButtonLabel(button));
     const selectedTagButtons = hashtagButtons.filter((button) => button.querySelector('[aria-label="削除"]'));

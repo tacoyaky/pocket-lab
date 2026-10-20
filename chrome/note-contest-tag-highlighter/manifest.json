@@ -12,7 +12,7 @@
   "permissions": ["alarms", "offscreen", "storage", "tabs"],
   "host_permissions": [
     "https://note.com/contests*",
-    "https://editor.note.com/notes/*/publish/*"
+    "https://editor.note.com/notes/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
@@ -20,7 +20,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://editor.note.com/notes/*/publish/*"],
+      "matches": ["https://editor.note.com/notes/*"],
       "js": ["src/content/content.js"],
       "css": ["styles/highlight.css"],
       "run_at": "document_idle"
