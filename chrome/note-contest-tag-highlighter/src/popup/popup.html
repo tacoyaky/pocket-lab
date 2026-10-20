@@ -3,21 +3,39 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>note Contest Tag Highlighter</title>
+    <title>note お題タグハイライト</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
-    <main>
-      <h1>note お題タグハイライト</h1>
-      <p id="availability" role="status">状態を確認しています…</p>
-      <dl>
-        <dt>最終更新</dt>
-        <dd id="updated-at">—</dd>
-        <dt>対象タグ</dt>
-        <dd id="tag-count">—</dd>
-      </dl>
-      <p id="error" class="error" hidden></p>
-      <button id="retry" type="button">今すぐ再取得</button>
+    <main class="popup">
+      <header class="hero-head">
+        <div class="brand">
+          <img src="../../icons/icon48.png" alt="">
+          <div class="brand-copy">
+            <p class="eyebrow">NOTE TAG HIGHLIGHTER</p>
+            <h1>お題タグハイライト</h1>
+          </div>
+        </div>
+        <p id="availability" class="status" role="status" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="status-label">状態を確認しています…</span>
+        </p>
+        <p id="support" class="support" hidden></p>
+      </header>
+
+      <section class="hero-body" aria-label="タグ情報">
+        <div class="tag-count">
+          <strong id="tag-count">—</strong>
+          <span>対象タグ</span>
+        </div>
+        <dl class="meta">
+          <div class="meta-row">
+            <dt>最終更新</dt>
+            <dd id="updated-at">—</dd>
+          </div>
+        </dl>
+        <button id="retry" type="button">タグ情報を更新</button>
+      </section>
     </main>
     <script src="popup.js"></script>
   </body>
