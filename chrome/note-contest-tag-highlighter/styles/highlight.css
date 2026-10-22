@@ -1,0 +1,12 @@
+.note-contest-tag-highlighter-match {
+  background-color: #d8f3dc !important;
+  color: #174b2a !important;
+  outline: 1px solid #55a66f !important;
+  outline-offset: 1px;
+}
+
+.note-contest-tag-highlighter-match:hover {
+  background-color: #f4f7f9 !important;
+  color: inherit !important;
+  outline-color: transparent !important;
+}

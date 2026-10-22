@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>note お題タグハイライト</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup">
+      <header class="hero-head">
+        <div class="brand">
+          <img src="../../icons/icon48.png" alt="">
+          <div class="brand-copy">
+            <p class="eyebrow">NOTE TAG HIGHLIGHTER</p>
+            <h1>お題タグハイライト</h1>
+          </div>
+        </div>
+        <p id="availability" class="status loading" role="status" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="status-label">取得状態を確認しています…</span>
+        </p>
+        <p id="support" class="support" hidden></p>
+      </header>
+
+      <section class="hero-body" aria-label="タグ情報">
+        <div class="tag-count">
+          <strong id="tag-count">—</strong>
+          <span>対象タグ</span>
+        </div>
+        <dl class="meta">
+          <div class="meta-row">
+            <dt>最終更新</dt>
+            <dd id="updated-at">—</dd>
+          </div>
+        </dl>
+        <button id="retry" type="button" disabled>確認中…</button>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
