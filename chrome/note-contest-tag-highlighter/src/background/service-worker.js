@@ -21,7 +21,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "GET_TAG_DATA") {
     chrome.storage.local.get(CACHE_KEY).then(({ tagData }) => {
-      sendResponse({ tagData: tagData ?? null });
+      sendResponse({ tagData: tagData ?? null, refreshing: Boolean(refreshPromise) });
     });
     return true;
   }
@@ -60,6 +60,7 @@ async function refreshTagData() {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
+    notifyRefreshState(true);
     try {
       const response = await fetch(SOURCE_URL, { credentials: "omit", cache: "no-store" });
       if (!response.ok) throw new Error(`Source returned HTTP ${response.status}`);
@@ -98,10 +99,15 @@ async function refreshTagData() {
       return { success: false, tagData: unavailable, error: error.message };
     } finally {
       refreshPromise = undefined;
+      notifyRefreshState(false);
     }
   })();
 
   return refreshPromise;
+}
+
+function notifyRefreshState(refreshing) {
+  void chrome.runtime.sendMessage({ type: "TAG_DATA_REFRESH_STATE", refreshing }).catch(() => {});
 }
 
 async function parseSourceHtml(html) {

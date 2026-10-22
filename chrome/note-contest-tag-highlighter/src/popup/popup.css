@@ -47,8 +47,18 @@ h1 { margin: 1px 0 0; font-size: 15px; font-weight: 650; letter-spacing: -.015em
 .status.warning .dot { background: #d88900; }
 .status.danger { background: #fde9e8; box-shadow: none; color: #9a302b; }
 .status.danger .dot { background: #c74942; }
+.status.loading { background: #edf3ee; box-shadow: 0 0 0 1px #dbe7dd; color: #526b58; }
+.status.loading .dot { background: #758e7a; animation: pulse 1.2s ease-in-out infinite; }
 .support { margin: 9px 0 0; color: #65736a; font-size: 12px; line-height: 1.5; }
 .support[hidden] { display: none; }
+
+@keyframes pulse {
+  50% { opacity: .4; transform: scale(.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status.loading .dot { animation: none; }
+}
 
 .hero-body { padding: 17px 20px 20px; }
 .tag-count { display: flex; align-items: baseline; gap: 7px; margin-bottom: 15px; }

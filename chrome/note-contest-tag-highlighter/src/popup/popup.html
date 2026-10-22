@@ -16,9 +16,9 @@
             <h1>お題タグハイライト</h1>
           </div>
         </div>
-        <p id="availability" class="status" role="status" aria-live="polite">
+        <p id="availability" class="status loading" role="status" aria-live="polite">
           <span class="dot" aria-hidden="true"></span>
-          <span id="status-label">状態を確認しています…</span>
+          <span id="status-label">取得状態を確認しています…</span>
         </p>
         <p id="support" class="support" hidden></p>
       </header>
@@ -34,7 +34,7 @@
             <dd id="updated-at">—</dd>
           </div>
         </dl>
-        <button id="retry" type="button">タグ情報を更新</button>
+        <button id="retry" type="button" disabled>確認中…</button>
       </section>
     </main>
     <script src="popup.js"></script>
