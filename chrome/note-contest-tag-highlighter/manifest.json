@@ -9,7 +9,7 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["alarms", "offscreen", "storage", "tabs"],
+  "permissions": ["alarms", "offscreen", "storage", "tabs", "webNavigation", "scripting"],
   "host_permissions": [
     "https://note.com/contests*",
     "https://editor.note.com/notes/*"

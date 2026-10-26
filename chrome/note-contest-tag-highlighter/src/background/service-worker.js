@@ -18,6 +18,15 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) void refreshTagData();
 });
 
+chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+  if (details.frameId !== 0 || !isEditorPage(details.url)) return;
+  void chrome.tabs.sendMessage(details.tabId, { type: "SPA_ROUTE_CHANGED" }, { frameId: 0 })
+    .then((response) => {
+      if (!response?.handled) return injectContentScript(details.tabId);
+    })
+    .catch(() => injectContentScript(details.tabId));
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "GET_TAG_DATA") {
     chrome.storage.local.get(CACHE_KEY).then(({ tagData }) => {
@@ -53,6 +62,27 @@ function isPublishPage(url) {
       /^\/notes\/[^/]+\/publish\/$/.test(parsed.pathname);
   } catch {
     return false;
+  }
+}
+
+function isEditorPage(url) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.hostname === "editor.note.com" &&
+      parsed.pathname.startsWith("/notes/");
+  } catch {
+    return false;
+  }
+}
+
+async function injectContentScript(tabId) {
+  const target = { tabId, frameIds: [0] };
+  try {
+    await chrome.scripting.insertCSS({ target, files: ["styles/highlight.css"] });
+    await chrome.scripting.executeScript({ target, files: ["src/content/content.js"] });
+  } catch {
+    // The page may have navigated away before the fallback injection completed.
   }
 }
 

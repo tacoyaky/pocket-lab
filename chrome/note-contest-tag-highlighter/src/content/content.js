@@ -4,6 +4,9 @@
   const MAX_TAG_CANDIDATE_TEXT_LENGTH = 180;
   const MUTATION_APPLY_DEBOUNCE_MS = 60;
   if (location.protocol !== "https:" || location.hostname !== "editor.note.com" || !location.pathname.startsWith("/notes/")) return;
+  const INSTANCE_KEY = "__noteContestTagHighlighterInitialized";
+  if (window[INSTANCE_KEY]) return;
+  window[INSTANCE_KEY] = true;
 
   let targetTags = new Set();
   let sortedTargetTags = [];
@@ -12,7 +15,7 @@
   let mutationApplyTimer;
   let active = false;
 
-  // Watch the document for SPA route changes, but rescan only for tag-related mutations.
+  // Watch for tag-related DOM changes; the service worker reports SPA history updates.
   const observer = new MutationObserver((mutations) => {
     const wasActive = active;
     syncRoute();
@@ -24,7 +27,16 @@
   window.addEventListener("hashchange", syncRoute);
   syncRoute();
 
-  chrome.runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "SPA_ROUTE_CHANGED") {
+      const wasActive = active;
+      syncRoute();
+      if (active && wasActive) {
+        scheduleApply();
+      }
+      sendResponse({ handled: true });
+      return;
+    }
     if (message?.type === "TAG_DATA_UPDATED" && active) loadTagData();
   });
 
