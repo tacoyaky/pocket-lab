@@ -31,3 +31,11 @@ The page structure on note.com may change. If it changes, the data reading and t
 - `src/content/`: page checks and tag highlighting
 - `src/popup/`: status display and manual update
 - `styles/`: highlight styles
+
+## Run tests
+
+Run the extension tests with Node.js:
+
+```sh
+node --test test/*.test.cjs
+```
