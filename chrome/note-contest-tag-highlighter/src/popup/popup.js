@@ -5,23 +5,64 @@ const updatedAt = document.querySelector("#updated-at");
 const tagCount = document.querySelector("#tag-count");
 const retry = document.querySelector("#retry");
 const popup = document.querySelector(".popup");
+const consentPanel = document.querySelector("#consent-panel");
+const appPanel = document.querySelector("#app-panel");
+const consentAccept = document.querySelector("#consent-accept");
+const consentRevoke = document.querySelector("#consent-revoke");
+const consentError = document.querySelector("#consent-error");
+const CONSENT_VERSION = 1;
 
 let manualRefresh = false;
 let backgroundRefreshing = false;
 let refreshStateRevision = 0;
 let renderRevision = 0;
+let consentGranted = false;
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && changes.tagData) void render();
+  if (areaName !== "local") return;
+  if (changes.dataUseConsent) {
+    setConsentState(changes.dataUseConsent.newValue?.version === CONSENT_VERSION);
+  }
+  if (changes.tagData && consentGranted) void render();
 });
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== "TAG_DATA_REFRESH_STATE") return;
   refreshStateRevision += 1;
   backgroundRefreshing = Boolean(message.refreshing);
-  void render();
+  if (consentGranted) void render();
 });
 
-void render();
+void initialize();
+
+consentAccept.addEventListener("click", async () => {
+  consentAccept.disabled = true;
+  consentError.hidden = true;
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "ACCEPT_DATA_USE" });
+    if (!response?.success) throw new Error(response?.error || "Consent could not be saved");
+    setConsentState(true);
+    await render();
+  } catch {
+    consentError.textContent = "同意を保存できませんでした。Chromeを再起動して、もう一度お試しください。";
+    consentError.hidden = false;
+  } finally {
+    consentAccept.disabled = false;
+  }
+});
+
+consentRevoke.addEventListener("click", async () => {
+  consentRevoke.disabled = true;
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "REVOKE_DATA_USE" });
+    if (!response?.success) throw new Error(response?.error || "Consent could not be removed");
+    setConsentState(false);
+  } catch {
+    support.textContent = "同意を取り消せませんでした。もう一度お試しください。";
+    support.hidden = false;
+  } finally {
+    consentRevoke.disabled = false;
+  }
+});
 
 retry.addEventListener("click", async () => {
   manualRefresh = true;
@@ -46,6 +87,7 @@ retry.addEventListener("click", async () => {
 });
 
 async function render() {
+  if (!consentGranted) return;
   const currentRender = ++renderRevision;
   const stateRevision = refreshStateRevision;
   let response;
@@ -99,4 +141,20 @@ async function render() {
   tagCount.textContent = refreshing && !hasData ? "—" : String(count);
   retry.disabled = refreshing;
   retry.textContent = refreshing ? "取得中…" : hasData ? "タグ情報を更新" : "再試行";
+}
+
+async function initialize() {
+  const { dataUseConsent } = await chrome.storage.local.get("dataUseConsent");
+  setConsentState(dataUseConsent?.version === CONSENT_VERSION);
+  if (consentGranted) await render();
+}
+
+function setConsentState(granted) {
+  consentGranted = granted;
+  consentPanel.hidden = granted;
+  appPanel.hidden = !granted;
+  if (!granted) {
+    statusLabel.textContent = "利用前の確認が必要です";
+    renderRevision += 1;
+  }
 }

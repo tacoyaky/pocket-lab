@@ -15,6 +15,19 @@ body {
 }
 
 .popup { overflow: hidden; }
+.popup [hidden] { display: none; }
+
+.consent-panel {
+  display: grid;
+  gap: 12px;
+  padding: 21px 20px 20px;
+}
+.consent-panel .eyebrow { margin: 0; }
+.consent-panel h1 { margin: -8px 0 0; font-size: 18px; }
+.consent-panel p { margin: 0; color: #58645b; font-size: 12px; line-height: 1.65; }
+.consent-panel .consent-error { color: #9a302b; }
+.privacy-link { color: #286b3d; font-size: 12px; text-decoration: underline; }
+.consent-panel button { margin-top: 2px; }
 
 .hero-head {
   min-height: 153px;
@@ -89,3 +102,21 @@ button {
 button:hover:not(:disabled) { background: #1e6b38; }
 button:focus-visible { outline: 2px solid #185e31; outline-offset: 2px; }
 button:disabled { cursor: wait; opacity: .72; }
+
+.popup-footer {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 10px;
+}
+.popup-footer button {
+  width: auto;
+  min-height: 28px;
+  padding: 0;
+  background: transparent;
+  color: #6b776d;
+  font-size: 11px;
+  font-weight: 500;
+}
+.popup-footer button:hover:not(:disabled) { background: transparent; color: #1e6b38; }

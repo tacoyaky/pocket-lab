@@ -104,7 +104,7 @@ function makeSelectedTag(tag) {
   return button;
 }
 
-function createPage(pathname, { immediateTagData } = {}) {
+function createPage(pathname, { immediateTagData, consentGranted = true } = {}) {
   const documentElement = new FakeElement("html");
   const body = documentElement.appendChild(new FakeElement("body"));
   const document = {
@@ -123,6 +123,7 @@ function createPage(pathname, { immediateTagData } = {}) {
   const pendingTimers = new Map();
   const pendingTagData = [];
   const messageListeners = [];
+  const storageListeners = [];
   const messages = [];
   let nextTimerId = 0;
   let observer;
@@ -137,6 +138,10 @@ function createPage(pathname, { immediateTagData } = {}) {
     observe(_target, options) {
       observerOptions = options;
     }
+
+    disconnect() {
+      observer = undefined;
+    }
   }
 
   const window = {
@@ -145,12 +150,23 @@ function createPage(pathname, { immediateTagData } = {}) {
       callbacks.push(listener);
       listeners.set(type, callbacks);
     },
+    removeEventListener(type, listener) {
+      listeners.set(type, (listeners.get(type) ?? []).filter((callback) => callback !== listener));
+    },
     dispatchEvent(event) {
       for (const listener of listeners.get(event.type) ?? []) listener(event);
       return true;
     }
   };
   const chrome = {
+    storage: {
+      local: {
+        get(_key, callback) {
+          callback({ dataUseConsent: consentGranted ? { version: 1 } : undefined });
+        }
+      },
+      onChanged: { addListener: (listener) => storageListeners.push(listener) }
+    },
     runtime: {
       lastError: null,
       onMessage: { addListener: (listener) => messageListeners.push(listener) },
@@ -216,6 +232,16 @@ function createPage(pathname, { immediateTagData } = {}) {
     messages,
     observerOptions: () => observerOptions,
     pendingTimerCount: () => pendingTimers.size,
+    hasObserver: () => Boolean(observer),
+    notifyConsentGranted: () => messageListeners.forEach((listener) => listener(
+      { type: "DATA_USE_CONSENT_GRANTED" },
+      {},
+      () => {}
+    )),
+    notifyConsentRevoked: () => storageListeners.forEach((listener) => listener(
+      { dataUseConsent: { oldValue: { version: 1 }, newValue: undefined } },
+      "local"
+    )),
     notifyRouteChanged: () => messageListeners.forEach((listener) => listener(
       { type: "SPA_ROUTE_CHANGED" },
       {},
@@ -229,6 +255,43 @@ function createPage(pathname, { immediateTagData } = {}) {
     startContentScript
   };
 }
+
+test("does not inspect page tags until the user consents", () => {
+  const page = createPage("/notes/example/publish/", {
+    consentGranted: false,
+    immediateTagData: { tags: ["スキしてみて"] }
+  });
+  const selectedTag = makeSelectedTag("スキしてみて");
+  page.body.appendChild(selectedTag);
+  page.startContentScript();
+  page.flushFrames();
+
+  assert.equal(page.hasObserver(), false);
+  assert.equal(page.messages.includes("GET_TAG_DATA"), false);
+  assert.equal(selectedTag.classList.contains("note-contest-tag-highlighter-match"), false);
+
+  page.notifyConsentGranted();
+  page.flushFrames();
+
+  assert.equal(page.hasObserver(), true);
+  assert.equal(selectedTag.classList.contains("note-contest-tag-highlighter-match"), true);
+});
+
+test("stops inspecting and clears highlights when consent is revoked", () => {
+  const page = createPage("/notes/example/publish/", {
+    immediateTagData: { tags: ["スキしてみて"] }
+  });
+  const selectedTag = makeSelectedTag("スキしてみて");
+  page.body.appendChild(selectedTag);
+  page.startContentScript();
+  page.flushFrames();
+  assert.equal(selectedTag.classList.contains("note-contest-tag-highlighter-match"), true);
+
+  page.notifyConsentRevoked();
+
+  assert.equal(page.hasObserver(), false);
+  assert.equal(selectedTag.classList.contains("note-contest-tag-highlighter-match"), false);
+});
 
 test("activates when the browser reports a SPA URL change after its DOM update", () => {
   const page = createPage("/notes/example/edit");

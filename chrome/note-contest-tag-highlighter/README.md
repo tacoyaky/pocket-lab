@@ -12,6 +12,8 @@ This Chrome extension highlights contest and theme tags on the note.com publish 
 
 Open `https://editor.note.com/notes/<article-id>/publish/`. The extension marks selected tags and suggestion tags that exactly match its tag data in green.
 
+On first use, the popup explains the page data the extension handles. Select **Agree and use** before it reads the editor URL or hashtag text. You can withdraw consent from the popup at any time; the extension stops observing the page and removes its highlights.
+
 The extension saves tag data on your device and updates it every 24 hours. If the first data request fails, it tries again each time you open a target page. The popup shows the data status, last update time, and number of tags. You can also start an update from the popup.
 
 ## Tag data and safe handling
@@ -39,3 +41,13 @@ Run the extension tests with Node.js:
 ```sh
 node --test test/*.test.cjs
 ```
+
+## Prepare a Chrome Web Store package
+
+Create a ZIP containing only runtime files:
+
+```sh
+./scripts/package.sh
+```
+
+See `STORE_LISTING.md` for the listing draft and remaining submission checklist.

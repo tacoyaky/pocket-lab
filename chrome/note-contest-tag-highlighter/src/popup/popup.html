@@ -3,17 +3,29 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>note お題タグハイライト</title>
+    <title>note Contest Tag Highlighter</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main class="popup">
+      <section id="consent-panel" class="consent-panel" aria-labelledby="consent-title" hidden>
+        <p class="eyebrow">note Contest Tag Highlighter</p>
+        <h1 id="consent-title">利用前の確認</h1>
+        <p>この拡張機能は、note.comの記事公開設定画面のURLと画面上のテキストを読み取り、ハッシュタグを見つけてお題タグと照合します。</p>
+        <p>読み取りと照合はこのブラウザ内で行います。記事のURLや画面上のテキストを開発者や第三者へ送信・保存しません。公開タグ一覧は note.com から取得し、この端末に保存します。</p>
+        <p>同意しない場合、記事画面の読み取りとハイライトは行いません。</p>
+        <a class="privacy-link" href="https://github.com/tacoyaky/pocket-lab/blob/main/chrome/note-contest-tag-highlighter/PRIVACY_POLICY.md" target="_blank" rel="noopener">プライバシーポリシー</a>
+        <button id="consent-accept" type="button">同意して利用する</button>
+        <p id="consent-error" class="consent-error" role="alert" hidden></p>
+      </section>
+
+      <div id="app-panel" hidden>
       <header class="hero-head">
         <div class="brand">
           <img src="../../icons/icon48.png" alt="">
           <div class="brand-copy">
-            <p class="eyebrow">NOTE TAG HIGHLIGHTER</p>
-            <h1>お題タグハイライト</h1>
+            <p class="eyebrow">note Contest Tag Highlighter</p>
+            <h1>note Contest Tag Highlighter</h1>
           </div>
         </div>
         <p id="availability" class="status loading" role="status" aria-live="polite">
@@ -36,6 +48,11 @@
         </dl>
         <button id="retry" type="button" disabled>確認中…</button>
       </section>
+      <footer class="popup-footer">
+        <a class="privacy-link" href="https://github.com/tacoyaky/pocket-lab/blob/main/chrome/note-contest-tag-highlighter/PRIVACY_POLICY.md" target="_blank" rel="noopener">プライバシーポリシー</a>
+        <button id="consent-revoke" type="button">同意を取り消す</button>
+      </footer>
+      </div>
     </main>
     <script src="popup.js"></script>
   </body>

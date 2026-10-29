@@ -1,4 +1,6 @@
 const CACHE_KEY = "tagData";
+const CONSENT_KEY = "dataUseConsent";
+const CONSENT_VERSION = 1;
 const ALARM_NAME = "refresh-note-contest-tags";
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const SOURCE_URL = "https://note.com/contests";
@@ -19,15 +21,38 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
-  if (details.frameId !== 0 || !isEditorPage(details.url)) return;
+  void handleHistoryStateUpdated(details);
+}, {
+  url: [{ hostEquals: "editor.note.com", pathPrefix: "/notes/" }]
+});
+
+async function handleHistoryStateUpdated(details) {
+  const { [CONSENT_KEY]: dataUseConsent } = await chrome.storage.local.get(CONSENT_KEY);
+  if (dataUseConsent?.version !== CONSENT_VERSION || details.frameId !== 0 || !isEditorPage(details.url)) return;
+
   void chrome.tabs.sendMessage(details.tabId, { type: "SPA_ROUTE_CHANGED" }, { frameId: 0 })
     .then((response) => {
       if (!response?.handled) return injectContentScript(details.tabId);
     })
     .catch(() => injectContentScript(details.tabId));
-});
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "ACCEPT_DATA_USE") {
+    chrome.storage.local.set({ [CONSENT_KEY]: { version: CONSENT_VERSION } })
+      .then(activateOpenEditorTabs)
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (message?.type === "REVOKE_DATA_USE") {
+    chrome.storage.local.remove(CONSENT_KEY)
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   if (message?.type === "GET_TAG_DATA") {
     chrome.storage.local.get(CACHE_KEY).then(({ tagData }) => {
       sendResponse({ tagData: tagData ?? null, refreshing: Boolean(refreshPromise) });
@@ -84,6 +109,18 @@ async function injectContentScript(tabId) {
   } catch {
     // The page may have navigated away before the fallback injection completed.
   }
+}
+
+async function activateOpenEditorTabs() {
+  const tabs = await chrome.tabs.query({ url: "https://editor.note.com/notes/*" });
+  await Promise.all(tabs.map(async (tab) => {
+    try {
+      const response = await chrome.tabs.sendMessage(tab.id, { type: "DATA_USE_CONSENT_GRANTED" });
+      if (!response?.handled) await injectContentScript(tab.id);
+    } catch {
+      await injectContentScript(tab.id);
+    }
+  }));
 }
 
 async function refreshTagData() {
@@ -164,6 +201,8 @@ function getDataValidationError(data) {
 }
 
 async function notifyPublishTabs() {
+  const { [CONSENT_KEY]: dataUseConsent } = await chrome.storage.local.get(CONSENT_KEY);
+  if (dataUseConsent?.version !== CONSENT_VERSION) return;
   const tabs = await chrome.tabs.query({ url: "https://editor.note.com/notes/*/publish/*" });
   await Promise.all(tabs.map((tab) => chrome.tabs.sendMessage(tab.id, { type: "TAG_DATA_UPDATED" }).catch(() => {})));
 }

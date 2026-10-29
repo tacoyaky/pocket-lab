@@ -3,7 +3,7 @@
   const TAG_CANDIDATE_SELECTORS = "button, [role='option'], [role='button'], li, div";
   const MAX_TAG_CANDIDATE_TEXT_LENGTH = 180;
   const MUTATION_APPLY_DEBOUNCE_MS = 60;
-  if (location.protocol !== "https:" || location.hostname !== "editor.note.com" || !location.pathname.startsWith("/notes/")) return;
+  const CONSENT_VERSION = 1;
   const INSTANCE_KEY = "__noteContestTagHighlighterInitialized";
   if (window[INSTANCE_KEY]) return;
   window[INSTANCE_KEY] = true;
@@ -14,31 +14,75 @@
   let scheduled = false;
   let mutationApplyTimer;
   let active = false;
-
-  // Watch for tag-related DOM changes; the service worker reports SPA history updates.
-  const observer = new MutationObserver((mutations) => {
-    const wasActive = active;
-    syncRoute();
-    if (active && wasActive && hasRelevantMutation(mutations)) scheduleMutationApply();
-  });
-  observer.observe(document.documentElement, { childList: true, characterData: true, subtree: true });
-
-  window.addEventListener("popstate", syncRoute);
-  window.addEventListener("hashchange", syncRoute);
-  syncRoute();
+  let initialized = false;
+  let observer;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "DATA_USE_CONSENT_GRANTED") {
+      start();
+      sendResponse({ handled: true });
+      return;
+    }
     if (message?.type === "SPA_ROUTE_CHANGED") {
+      if (!initialized) {
+        sendResponse({ handled: false });
+        return;
+      }
       const wasActive = active;
       syncRoute();
-      if (active && wasActive) {
-        scheduleApply();
-      }
+      if (active && wasActive) scheduleApply();
       sendResponse({ handled: true });
       return;
     }
     if (message?.type === "TAG_DATA_UPDATED" && active) loadTagData();
   });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local" || !changes.dataUseConsent) return;
+    if (changes.dataUseConsent.newValue?.version === CONSENT_VERSION) start();
+    else stop();
+  });
+
+  chrome.storage.local.get("dataUseConsent", ({ dataUseConsent }) => {
+    if (dataUseConsent?.version === CONSENT_VERSION) start();
+  });
+
+  function start() {
+    if (initialized || !isSupportedEditorPage()) return;
+    initialized = true;
+    observer = new MutationObserver((mutations) => {
+      const wasActive = active;
+      syncRoute();
+      if (active && wasActive && hasRelevantMutation(mutations)) scheduleMutationApply();
+    });
+    observer.observe(document.documentElement, { childList: true, characterData: true, subtree: true });
+    window.addEventListener("popstate", syncRoute);
+    window.addEventListener("hashchange", syncRoute);
+    syncRoute();
+  }
+
+  function stop() {
+    if (!initialized) return;
+    initialized = false;
+    observer?.disconnect();
+    observer = undefined;
+    window.removeEventListener("popstate", syncRoute);
+    window.removeEventListener("hashchange", syncRoute);
+    clearTimeout(mutationApplyTimer);
+    mutationApplyTimer = undefined;
+    active = false;
+    targetTags = new Set();
+    sortedTargetTags = [];
+    trackedTagElements = new Set();
+    for (const element of document.querySelectorAll(".note-contest-tag-highlighter-match")) {
+      element.classList.remove("note-contest-tag-highlighter-match");
+    }
+  }
+
+  function isSupportedEditorPage() {
+    return location.protocol === "https:" && location.hostname === "editor.note.com" &&
+      location.pathname.startsWith("/notes/");
+  }
 
   function syncRoute() {
     const shouldBeActive = PUBLISH_PATH.test(location.pathname);
