@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "note Contest Tag Highlighter"
+  },
+  "extensionDescription": {
+    "message": "note.comの記事公開設定画面で、お題・コンテスト対象のハッシュタグをハイライトします。"
+  }
+}
