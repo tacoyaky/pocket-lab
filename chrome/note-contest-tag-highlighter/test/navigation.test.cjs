@@ -95,6 +95,8 @@ test("declares webNavigation permission for SPA URL change events", () => {
   assert.equal(manifest.permissions.includes("webNavigation"), true);
   assert.equal(manifest.permissions.includes("scripting"), true);
   assert.equal(manifest.permissions.includes("tabs"), false);
+  assert.equal(manifest.host_permissions.includes("https://note.com/contests*"), true);
+  assert.equal(manifest.host_permissions.filter((permission) => permission === "https://note.com/contests*").length, 1);
 });
 
 test("forwards top-frame editor history updates to the content script", async () => {

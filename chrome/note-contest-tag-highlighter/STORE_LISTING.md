@@ -45,7 +45,7 @@ Select the dashboard data categories corresponding to **web browsing activity** 
 | `storage` | Stores the public tag cache and the user's consent state locally. |
 | `webNavigation` | Detects same-document route changes on note.com editor pages so highlighting starts on the publishing screen and stops when leaving it. The event listener is filtered to `editor.note.com/notes/*` and processing is disabled until consent. |
 | `scripting` | Injects the extension's own content script and stylesheet into an already-open note.com editor tab when no content-script listener is available. Host permissions restrict this to note.com pages. |
-| `https://note.com/contests*` | Fetches the public contest and theme tag list. |
+| `https://note.com/contests*` | Lets the service worker fetch the public contests page and parse its tag links. |
 | `https://editor.note.com/notes/*` | Runs the consent-gated tag matching feature on note.com article editor pages and supports SPA route changes. |
 
 The broad `tabs` permission is not requested. Matching note.com host permissions scope access to the relevant tabs.
