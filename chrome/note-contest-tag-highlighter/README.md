@@ -14,15 +14,13 @@ Open `https://editor.note.com/notes/<article-id>/publish/`. The extension marks 
 
 On first use, the popup explains the page data the extension handles. Select **Agree and use** before it reads the editor URL or hashtag text. You can withdraw consent from the popup at any time; the extension stops observing the page and removes its highlights.
 
-The extension saves tag data on your device and updates it every 24 hours. If the first data request fails, it tries again each time you open a target page. The popup shows the data status, last update time, and number of tags. You can also start an update from the popup.
+The extension fetches the public `https://note.com/contests` HTML from its service worker without sending authentication cookies. An offscreen document parses the HTML and collects links whose `aria-label` starts with `#` and whose URL points to a note.com contest page. The tag name and URL are normalized, and repeated names are removed without relying on page headings, categories, or CSS classes.
+
+The extension saves tag data on your device and updates it every 24 hours. If a request fails or the result looks incomplete, the last successful tag list and its update time are kept. If the first data request fails, it tries again each time you open a target page. The popup shows the data status, last update time, and number of tags. You can also start an update from the popup.
 
 ## Tag data and safe handling
 
-The extension reads contest tags and tags from the **Find a theme to write about** section as separate groups. It removes duplicate tags before use.
-
-Each contest name shown on `/contests` is treated as a current tag. The extension does not check contest pages that have ended.
-
-If the extension cannot find the expected headings or tag names, or if many theme tags are missing, it does not save the new data. It keeps the last data that it read successfully.
+Each qualifying contest link on `/contests` is treated as a current tag. The extension does not check contest pages that have ended. If a refresh returns no qualifying links, invalid URLs, or fewer than half the number of tags in a substantial previous cache, it does not save the result and logs a warning.
 
 The page structure on note.com may change. If it changes, the data reading and tag detection code may need an update.
 

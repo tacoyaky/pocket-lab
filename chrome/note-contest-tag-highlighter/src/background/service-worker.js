@@ -4,11 +4,14 @@ const CONSENT_VERSION = 1;
 const ALARM_NAME = "refresh-note-contest-tags";
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const SOURCE_URL = "https://note.com/contests";
+const FETCH_TIMEOUT_MS = 20 * 1000;
+const MIN_PREVIOUS_TAG_COUNT_FOR_DROP_CHECK = 30;
+const MIN_ACCEPTABLE_TAG_COUNT_RATIO = 0.5;
 let refreshPromise;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create(ALARM_NAME, { periodInMinutes: 24 * 60 });
-  void refreshTagData();
+  void refreshIfStale();
 });
 
 chrome.runtime.onStartup.addListener(() => {
@@ -129,18 +132,41 @@ async function refreshTagData() {
   refreshPromise = (async () => {
     notifyRefreshState(true);
     try {
-      const response = await fetch(SOURCE_URL, { credentials: "omit", cache: "no-store" });
-      if (!response.ok) throw new Error(`Source returned HTTP ${response.status}`);
-      const html = await response.text();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      let response;
+      let html;
+      try {
+        response = await fetch(SOURCE_URL, {
+          method: "GET",
+          credentials: "omit",
+          cache: "no-store",
+          signal: controller.signal
+        });
+        if (response.status !== 200) throw new Error(`Source returned HTTP ${response.status}`);
+
+        const contentType = response.headers?.get("content-type") ?? "";
+        if (!/^text\/html(?:\s*;|\s*$)/i.test(contentType)) {
+          throw new Error(`Source returned an unexpected Content-Type: ${contentType || "missing"}`);
+        }
+
+        html = await response.text();
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (typeof html !== "string" || html.trim().length === 0) throw new Error("Source returned an empty HTML document");
       const extracted = await parseSourceHtml(html);
       if (extracted?.error) throw new Error(`Source parsing failed: ${extracted.error}`);
-      const validationError = getDataValidationError(extracted);
+      const { tagData: previousTagData } = await chrome.storage.local.get(CACHE_KEY);
+      const validationError = getDataValidationError(extracted, previousTagData);
       if (validationError) throw new Error(`Could not validate tags from source page: ${validationError}`);
 
+      const tags = [...new Set(extracted.tags.map((tag) => tag.name.trim()))];
       const tagData = {
-        contests: extracted.contests,
-        themes: extracted.themes,
-        tags: [...new Set([...extracted.contests, ...extracted.themes])],
+        contests: tags,
+        themes: [],
+        tags,
         updatedAt: Date.now(),
         status: "available",
         error: null
@@ -150,6 +176,7 @@ async function refreshTagData() {
       return { success: true, tagData };
     } catch (error) {
       const { tagData } = await chrome.storage.local.get(CACHE_KEY);
+      console.warn("[note-contest-tag-highlighter] Tag refresh failed; retaining the previous cache.", error);
       if (tagData) {
         const preserved = { ...tagData, status: "stale", error: error.message };
         await chrome.storage.local.set({ [CACHE_KEY]: preserved });
@@ -189,13 +216,41 @@ async function parseSourceHtml(html) {
   return chrome.runtime.sendMessage({ type: "PARSE_SOURCE_HTML", html });
 }
 
-function getDataValidationError(data) {
-  if (!data || !Array.isArray(data.contests) || !Array.isArray(data.themes)) return "tag sections were not extracted";
-  if (data.contests.length === 0 || data.themes.length === 0) return "one or more tag sections are empty";
-  if (data.themeCategoryCount === 0) return "no theme categories were detected";
-  if (data.themeCategoriesWithTags !== data.themeCategoryCount) return "some theme categories have no hashtag titles";
-  if (![...data.contests, ...data.themes].every((tag) => typeof tag === "string" && tag.length > 0)) {
-    return "an extracted tag is empty or invalid";
+function getDataValidationError(data, previousTagData) {
+  if (!data || !Array.isArray(data.tags)) return "contest tag links were not extracted";
+  if (data.tags.length === 0) return "no contest tag links were found";
+
+  const names = [];
+  for (const tag of data.tags) {
+    if (!tag || typeof tag.name !== "string" || !tag.name.trim() || typeof tag.url !== "string") {
+      return "an extracted tag name or URL is empty or invalid";
+    }
+
+    let url;
+    try {
+      url = new URL(tag.url);
+    } catch {
+      return "an extracted tag URL is invalid";
+    }
+    if (url.origin !== "https://note.com" || url.username || url.password || !url.pathname.startsWith("/contest/") ||
+        url.pathname.length <= "/contest/".length) {
+      return "an extracted tag URL is outside the note.com contest pages";
+    }
+    names.push(tag.name.trim());
+  }
+
+  // Legacy caches split the list into contest and theme groups. The new parser
+  // intentionally treats all qualifying links as one list, so compare against
+  // the legacy contest group during migration and the full list afterward.
+  const previousComparableTags = Array.isArray(previousTagData?.themes) && previousTagData.themes.length > 0
+    ? previousTagData.contests
+    : previousTagData?.tags;
+  const previousTagCount = Array.isArray(previousComparableTags)
+    ? new Set(previousComparableTags.filter((tag) => typeof tag === "string" && tag.trim())).size
+    : 0;
+  if (previousTagCount >= MIN_PREVIOUS_TAG_COUNT_FOR_DROP_CHECK &&
+      names.length < previousTagCount * MIN_ACCEPTABLE_TAG_COUNT_RATIO) {
+    return `tag count dropped from ${previousTagCount} to ${names.length}`;
   }
   return null;
 }
